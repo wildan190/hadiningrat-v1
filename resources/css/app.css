@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    .prose {
+        h1 {
+            @apply text-4xl font-bold mb-4;
+        }
+        h2 {
+            @apply text-3xl font-bold mb-4;
+        }
+        h3 {
+            @apply text-2xl font-bold mb-4;
+        }
+        ol {
+            @apply list-decimal list-inside mb-4;
+        }
+        ul {
+            @apply list-disc list-inside mb-4;
+        }
+        li {
+            @apply mb-2;
+        }
+        table {
+            @apply w-full border-collapse border border-gray-300 mb-4;
+        }
+        th, td {
+            @apply border border-gray-300 p-2;
+        }
+    }
+}
