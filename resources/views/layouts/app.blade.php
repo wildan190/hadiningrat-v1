@@ -3,7 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    {{-- Dynamic Title --}}
     <title>@yield('title', 'Hadiwijaya Bore Pile')</title>
+
+    {{-- Dynamic Description --}}
+    <meta name="description" content="@yield('description', 'Kami adalah spesialis jasa bore pile dan straus pile yang berpengalaman dan terpercaya di Jawa Tengah dan sekitarnya. Hubungi kami untuk solusi pondasi Anda.')">
+
+    {{-- Canonical --}}
+    <link rel="canonical" href="{{ url()->current() }}">
+
+    {{-- Favicon --}}
+    <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
 
     {{-- Google Fonts --}}
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -12,8 +23,15 @@
     {{-- Font Awesome Icons --}}
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
 
-    {{-- Vite CSS & JS (Tailwind, Alpine, dll) --}}
+    {{-- Vite (Tailwind, Alpine, JS) --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    {{-- SEO & Schema (OpenGraph + Twitter + JSON-LD) --}}
+    @include('partials._schema')
+    @stack('schema')
+
+    {{-- Additional Page Styles --}}
+    @stack('styles')
 
     <style>
         body {
@@ -46,7 +64,7 @@
             transform: scale(1.1);
         }
 
-        /* Responsive images and embeds inside .prose */
+        /* Responsive images & embeds in .prose */
         .prose img,
         .prose iframe,
         .prose table,
@@ -83,8 +101,6 @@
             display: none;
         }
     </style>
-
-    @stack('styles')
 </head>
 
 <body class="bg-white text-brand-blue overflow-x-hidden">
@@ -105,6 +121,8 @@
         <i class="fab fa-whatsapp"></i>
     </a>
 
+    {{-- Extra Page Scripts --}}
     @stack('scripts')
+
 </body>
 </html>

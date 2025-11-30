@@ -1,6 +1,41 @@
 @extends('layouts.app')
 
 @section('title', $product['name'] ?? 'Detail Produk')
+@section('description', isset($product['description']) ? strip_tags(substr($product['description'], 0, 155)) : '')
+@section('og_image', $product['images'][0]['src'] ?? asset('assets/img/hbp-logo.png'))
+
+@php
+    // Safe variables
+    $prodName = $product['name'] ?? '';
+    $prodImage = $product['images'][0]['src'] ?? asset('assets/img/hbp-logo.png');
+    $prodDescription = isset($product['description']) ? strip_tags($product['description']) : '';
+    $prodSku = $product['sku'] ?? ($product['id'] ?? null);
+    $prodPrice = $product['price'] ?? '0';
+    $prodUrl = url()->current();
+
+    // Build schema as PHP array (prevents Blade parsing @context/@type)
+    $productSchema = [
+        "@context" => "https://schema.org",
+        "@type" => "Product",
+        "name" => $prodName,
+        "image" => $prodImage,
+        "description" => $prodDescription,
+        "sku" => $prodSku,
+        "offers" => [
+            "@type" => "Offer",
+            "url" => $prodUrl,
+            "priceCurrency" => "IDR",
+            "price" => $prodPrice,
+            "availability" => "https://schema.org/InStock",
+        ],
+    ];
+@endphp
+
+@push('schema')
+<script type="application/ld+json">
+{!! json_encode($productSchema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) !!}
+</script>
+@endpush
 
 @section('content')
 
@@ -34,7 +69,7 @@
                         <div class="relative rounded-2xl overflow-hidden shadow-xl bg-white">
                             <img 
                                 src="{{ $product['images'][0]['src'] }}" 
-                                alt="{{ $product['name'] }}" 
+                                alt="{{ $product['name'] ?? 'Produk' }}" 
                                 class="w-full object-contain max-h-[600px] mx-auto"
                             >
                         </div>
@@ -45,7 +80,7 @@
                                     <div class="aspect-square rounded-lg overflow-hidden shadow-md transition-transform hover:scale-105">
                                         <img 
                                             src="{{ $image['src'] }}" 
-                                            alt="{{ $product['name'] }}" 
+                                            alt="{{ $product['name'] ?? 'Produk' }}" 
                                             class="w-full h-full object-cover cursor-pointer border-2 border-transparent hover:border-brand-orange"
                                         >
                                     </div>
@@ -62,10 +97,10 @@
                 {{-- Product Info --}}
                 <div class="lg:sticky lg:top-32">
                     <div class="bg-white p-4 sm:p-6 lg:p-8 rounded-xl sm:rounded-2xl shadow-lg">
-                        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-brand-blue mb-4 break-words">{{ $product['name'] }}</h1>
+                        <h1 class="text-2xl sm:text-3xl lg:text-4xl font-bold text-brand-blue mb-4 break-words">{{ $product['name'] ?? '-' }}</h1>
                         
                         <div class="text-xl sm:text-2xl lg:text-3xl font-bold text-brand-orange mb-6">
-                            {!! $product['price_html'] !!}
+                            {!! $product['price_html'] ?? ('Rp ' . number_format((float)($product['price'] ?? 0), 0, ',', '.')) !!}
                         </div>
 
                         @if(!empty($product['categories']))
@@ -114,7 +149,7 @@
                         @php
                             // Mengubah H1 dari deskripsi menjadi H2 untuk menjaga struktur SEO,
                             // sambil tetap memberikan styling yang sesuai melalui CSS.
-                            $description = str_replace(['<h1>', '</h1>'], ['<h2>', '</h2>'], $product['description']);
+                            $description = isset($product['description']) ? str_replace(['<h1>', '</h1>'], ['<h2>', '</h2>'], $product['description']) : '';
                         @endphp
                         {!! $description !!}
                     </div>
@@ -190,45 +225,50 @@
 
 @push('scripts')
 <script>
-  document.getElementById('submitBooking').addEventListener('click', function() {
-    // Get all form values
-    const name = document.getElementById('name').value.trim();
-    const whatsapp = document.getElementById('whatsapp').value.trim();
-    const location = document.getElementById('location').value.trim();
-    const message = document.getElementById('message').value.trim();
-    const productName = "{{ $product['name'] }}";
+  document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('submitBooking');
+    if (!btn) return;
 
-    // Validate required fields
-    if (!name || !whatsapp || !location) {
-      alert('Nama, Nomor WhatsApp, dan Lokasi Proyek tidak boleh kosong.');
-      return;
-    }
+    btn.addEventListener('click', function() {
+      // Get all form values
+      const name = document.getElementById('name').value.trim();
+      const whatsapp = document.getElementById('whatsapp').value.trim();
+      const location = document.getElementById('location').value.trim();
+      const message = document.getElementById('message').value.trim();
+      const productName = {!! json_encode($prodName) !!};
 
-    // Format WhatsApp number (remove any non-numeric characters and ensure it starts with proper format)
-    let formattedWhatsApp = whatsapp.replace(/\D/g, '');
-    if (formattedWhatsApp.startsWith('0')) {
-      formattedWhatsApp = '62' + formattedWhatsApp.substring(1);
-    } else if (!formattedWhatsApp.startsWith('62')) {
-      formattedWhatsApp = '62' + formattedWhatsApp;
-    }
+      // Validate required fields
+      if (!name || !whatsapp || !location) {
+        alert('Nama, Nomor WhatsApp, dan Lokasi Proyek tidak boleh kosong.');
+        return;
+      }
 
-    // Create the WhatsApp message
-    const waMessage = `Halo, saya tertarik untuk memesan produk berikut:\n\n` +
-                     `*Produk:* ${productName}\n` +
-                     `*Nama:* ${name}\n` +
-                     `*Nomor WhatsApp:* ${whatsapp}\n` +
-                     `*Lokasi Proyek:* ${location}\n` +
-                     `*Pesan:* ${message || '-'}\n\n` +
-                     `Mohon informasinya lebih lanjut.`;
+      // Format WhatsApp number (remove any non-numeric characters and ensure it starts with proper format)
+      let formattedWhatsApp = whatsapp.replace(/\D/g, '');
+      if (formattedWhatsApp.startsWith('0')) {
+        formattedWhatsApp = '62' + formattedWhatsApp.substring(1);
+      } else if (!formattedWhatsApp.startsWith('62')) {
+        formattedWhatsApp = '62' + formattedWhatsApp;
+      }
 
-    // Create WhatsApp URL (using company's WhatsApp number)
-    const whatsappUrl = `https://wa.me/6281325794818?text=${encodeURIComponent(waMessage)}`;
+      // Create the WhatsApp message
+      const waMessage = `Halo, saya tertarik untuk memesan produk berikut:\n\n` +
+                       `*Produk:* ${productName}\n` +
+                       `*Nama:* ${name}\n` +
+                       `*Nomor WhatsApp:* ${whatsapp}\n` +
+                       `*Lokasi Proyek:* ${location}\n` +
+                       `*Pesan:* ${message || '-'}\n\n` +
+                       `Mohon informasinya lebih lanjut.`;
 
-    // Close the modal using Alpine's global store
-    window.dispatchEvent(new CustomEvent('close-booking-modal'));
+      // Create WhatsApp URL (using company's WhatsApp number)
+      const whatsappUrl = `https://wa.me/6281325794818?text=${encodeURIComponent(waMessage)}`;
 
-    // Open WhatsApp in new tab
-    window.open(whatsappUrl, '_blank');
+      // Close the modal using Alpine's global store
+      window.dispatchEvent(new CustomEvent('close-booking-modal'));
+
+      // Open WhatsApp in new tab
+      window.open(whatsappUrl, '_blank');
+    });
   });
 </script>
 @endpush
