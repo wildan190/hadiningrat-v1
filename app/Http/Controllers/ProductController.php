@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+use Illuminate\Support\Facades\Cache;
+
 class ProductController extends Controller
 {
     public function index()
@@ -15,101 +17,77 @@ class ProductController extends Controller
         $apiUrl = env('WC_API_URL');
 
         try {
-            $response = Http::withBasicAuth($consumerKey, $consumerSecret)
-                ->get($apiUrl, [
-                    'per_page' => 100,
-                    'status' => 'publish'
-                ]);
+            // Cache for 60 minutes (3600 seconds)
+            $products = Cache::remember('wc_products_all', 3600, function () use ($consumerKey, $consumerSecret, $apiUrl) {
+                $response = Http::withBasicAuth($consumerKey, $consumerSecret)
+                    ->get($apiUrl, [
+                        'per_page' => 100,
+                        'status' => 'publish'
+                    ]);
 
-            if ($response->successful()) {
-                $products = $response->json();
-                return view('area-layanan', ['products' => $products]);
-            } else {
-                Log::error('WooCommerce API Error: ' . $response->body());
-                return view('area-layanan', [
-                    'products' => [],
-                    'error' => 'Tidak dapat memuat produk saat ini. Silakan coba lagi nanti.'
-                ]);
-            }
+                if ($response->successful()) {
+                    return $response->json();
+                }
+
+                throw new \Exception('WooCommerce API Error: ' . $response->body());
+            });
+
+            return view('area-layanan', ['products' => $products]);
+
         } catch (\Exception $e) {
             Log::error('WooCommerce API Exception: ' . $e->getMessage());
+            // Attempt to return cached data even if expired if API fails, or empty array
+            $products = Cache::get('wc_products_all', []);
+
             return view('area-layanan', [
-                'products' => [],
-                'error' => 'Terjadi kesalahan saat memuat produk. Silakan coba lagi nanti.'
+                'products' => $products,
+                'error' => empty($products) ? 'Terjadi kesalahan saat memuat produk. Silakan coba lagi nanti.' : null
             ]);
         }
-
-
-        /* KODE ASLI YANG MENGHUBUNGI WOOCOMMERCE - SEMENTARA DINONAKTIFKAN
-        $consumerKey = env('WC_CONSUMER_KEY');
-        $consumerSecret = env('WC_CONSUMER_SECRET');
-        $url = env('WC_API_URL');
-
-        $response = Http::withOptions(['verify' => false])->get($url, [
-            'consumer_key' => $consumerKey,
-            'consumer_secret' => $consumerSecret,
-            'per_page' => 20
-        ]);
-
-        if ($response->failed()) {
-            return view('area-layanan', ['error' => 'Tidak dapat mengambil data produk.']);
-        }
-
-        $products = $response->json();
-
-        return view('area-layanan', ['products' => $products]);
-        */
     }
 
-    public function show($slug)
+
+
+    public function show($slug, \App\Services\RankMathService $rankMathService)
     {
         $consumerKey = env('WC_CONSUMER_KEY');
         $consumerSecret = env('WC_CONSUMER_SECRET');
         $apiUrl = env('WC_API_URL');
 
         try {
-            $response = Http::withBasicAuth($consumerKey, $consumerSecret)
-                ->get($apiUrl, [
-                    'slug' => $slug
-                ]);
+            // Cache for 60 minutes
+            $product = Cache::remember('wc_product_' . $slug, 3600, function () use ($consumerKey, $consumerSecret, $apiUrl, $slug) {
+                $response = Http::withBasicAuth($consumerKey, $consumerSecret)
+                    ->get($apiUrl, [
+                        'slug' => $slug
+                    ]);
 
-            if ($response->successful()) {
-                $products = $response->json();
-                
-                if (empty($products)) {
-                    abort(404, 'Produk tidak ditemukan');
+                if ($response->successful()) {
+                    $products = $response->json();
+                    if (empty($products)) {
+                        return null;
+                    }
+                    return $products[0];
                 }
 
-                // WooCommerce returns an array, but we need the first product with matching slug
-                $product = $products[0];
-                return view('produk-detail', ['product' => $product]);
-            } else {
-                Log::error('WooCommerce API Error: ' . $response->body());
+                throw new \Exception('WooCommerce API Error: ' . $response->body());
+            });
+
+            if (!$product) {
                 abort(404, 'Produk tidak ditemukan');
             }
+
+            // Fetch RankMath Head
+            $rankMathHead = $rankMathService->getHead($product['permalink'] ?? url()->current());
+
+            return view('produk-detail', [
+                'product' => $product,
+                'rankMathHead' => $rankMathHead
+            ]);
+
         } catch (\Exception $e) {
             Log::error('WooCommerce API Exception: ' . $e->getMessage());
             abort(500, 'Terjadi kesalahan saat memuat produk');
         }
-
-        /* KODE ASLI - SEMENTARA DINONAKTIFKAN
-        $consumerKey = env('WC_CONSUMER_KEY');
-        $consumerSecret = env('WC_CONSUMER_SECRET');
-        $url = env('WC_API_URL');
-
-        $response = Http::withOptions(['verify' => false])->get($url, [
-            'consumer_key' => $consumerKey,
-            'consumer_secret' => $consumerSecret,
-            'slug' => $slug
-        ]);
-
-        if ($response->failed() || empty($response->json())) {
-            abort(404, 'Produk tidak ditemukan.');
-        }
-
-        $product = $response->json()[0];
-
-        return view('produk-detail', ['product' => $product]);
-        */
     }
 }

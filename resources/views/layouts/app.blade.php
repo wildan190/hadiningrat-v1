@@ -1,17 +1,26 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    {{-- Dynamic Title --}}
-    <title>@yield('title', 'Hadiwijaya Bore Pile')</title>
+    @hasSection('rank_math')
+        @yield('rank_math')
+    @else
+        {{-- Dynamic Title --}}
+        <title>@yield('title', 'Hadiwijaya Bore Pile')</title>
 
-    {{-- Dynamic Description --}}
-    <meta name="description" content="@yield('description', 'Kami adalah spesialis jasa bore pile dan straus pile yang berpengalaman dan terpercaya di Jawa Tengah dan sekitarnya. Hubungi kami untuk solusi pondasi Anda.')">
+        {{-- Dynamic Description --}}
+        <meta name="description"
+            content="@yield('description', 'Kami adalah spesialis jasa bore pile dan straus pile yang berpengalaman dan terpercaya di Jawa Tengah dan sekitarnya. Hubungi kami untuk solusi pondasi Anda.')">
 
-    {{-- Canonical --}}
-    <link rel="canonical" href="{{ url()->current() }}">
+        {{-- Canonical --}}
+        <link rel="canonical" href="{{ url()->current() }}">
+
+        {{-- SEO & Schema (OpenGraph + Twitter + JSON-LD) --}}
+        @include('partials._schema')
+    @endif
 
     {{-- Favicon --}}
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
@@ -26,8 +35,6 @@
     {{-- Vite (Tailwind, Alpine, JS) --}}
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-    {{-- SEO & Schema (OpenGraph + Twitter + JSON-LD) --}}
-    @include('partials._schema')
     @stack('schema')
 
     {{-- Additional Page Styles --}}
@@ -38,7 +45,9 @@
             font-family: 'Rubik', sans-serif;
         }
 
-        [x-cloak] { display: none !important; }
+        [x-cloak] {
+            display: none !important;
+        }
 
         /* Floating WhatsApp Button Styles */
         .whatsapp-float {
@@ -52,7 +61,7 @@
             border-radius: 50px;
             text-align: center;
             font-size: 30px;
-            box-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+            box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
             z-index: 100;
             display: flex;
             align-items: center;
@@ -76,6 +85,7 @@
         }
 
         @media (max-width: 640px) {
+
             .prose img,
             .prose figure img {
                 max-width: 100%;
@@ -97,6 +107,7 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
         .no-scrollbar::-webkit-scrollbar {
             display: none;
         }
@@ -125,4 +136,5 @@
     @stack('scripts')
 
 </body>
+
 </html>
